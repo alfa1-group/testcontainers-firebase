@@ -39,7 +39,7 @@
         <slf4j-api.version>2.0.16</slf4j-api.version>
         <junit-jupiter.version>5.10.5</junit-jupiter.version>
         <firebase-admin.version>9.4.1</firebase-admin.version>
-        <google-cloud-firestore.version>3.28.0</google-cloud-firestore.version>
+        <google-cloud-firestore.version>3.30.0</google-cloud-firestore.version>
         <google-cloud-pubsub.version>1.134.1</google-cloud-pubsub.version>
         <logback-classic.version>1.5.6</logback-classic.version>
 
