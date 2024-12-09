@@ -206,7 +206,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     }
 
     /**
-     *
+     * The firebase configuration, this record mimics the various items which can be configured using the
+     * firebase.json file.
      * @param hostingConfig The firebase hosting configuration
      * @param storageConfig The storage configuration
      * @param firestoreConfig The firestore configuration
