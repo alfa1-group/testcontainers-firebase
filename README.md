@@ -9,6 +9,23 @@ This library extends the [TestContainers](https://www.testcontainers.org/) proje
 - Support for importing/exporting emulator data.
 - Easy setup for Firebase Hosting, Firestore, Storage, and more.
 
+The following emulators have been verified to work:
+
+* Firebase Auth
+* Firebase Firestore
+* Firebase Emulator UI
+* Realtime Database
+* PubSub
+* Cloud Storage
+
+The following emulators need additional work:
+
+* Firebase Hosting
+* Functions
+
+The following emulators are currently unverified:
+* EventArc
+
 ## Installation
 
 Add the following dependency to your `pom.xml`:
