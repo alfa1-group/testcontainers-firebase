@@ -31,7 +31,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
@@ -77,9 +81,9 @@ public class FirebaseEmulatorContainerIntegrationTest {
                     FirebaseEmulatorContainer.Emulator.CLOUD_FIRESTORE_WS, 6003,
                     FirebaseEmulatorContainer.Emulator.PUB_SUB, 6004,
                     FirebaseEmulatorContainer.Emulator.CLOUD_STORAGE, 6005,
-                    //            Emulators.FIREBASE_HOSTING, new ExposedPort(6006),
-                    //            Emulators.CLOUD_FUNCTIONS, new ExposedPort(6007),
-                    //            Emulators.EVENT_ARC, new ExposedPort(6008),
+                    FirebaseEmulatorContainer.Emulator.FIREBASE_HOSTING, 6006,
+                    //            Emulator.CLOUD_FUNCTIONS, 6007,
+                    //            Emulator.EVENT_ARC, 6008,
                     FirebaseEmulatorContainer.Emulator.EMULATOR_SUITE_UI, 6009,
                     FirebaseEmulatorContainer.Emulator.EMULATOR_HUB, 6010,
                     FirebaseEmulatorContainer.Emulator.LOGGING, 6011
@@ -338,6 +342,18 @@ public class FirebaseEmulatorContainerIntegrationTest {
 
         // Close the connection
         connection.disconnect();
+    }
+
+    @Test
+    public void testHosting() throws IOException, InterruptedException, URISyntaxException {
+        HttpClient httpClient = HttpClient.newHttpClient();
+        var request = HttpRequest.newBuilder()
+                .GET()
+                .uri(new URI("http://localhost:6006/index.html"))
+                .build();
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        var body = response.body();
+        assertEquals("<html><body><h1>Hello, Firebase Hosting!</h1></body></html>", body);
     }
 
     /*

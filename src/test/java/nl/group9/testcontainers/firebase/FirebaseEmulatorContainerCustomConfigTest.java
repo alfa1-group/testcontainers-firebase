@@ -6,8 +6,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Testcontainers
@@ -51,6 +57,18 @@ public class FirebaseEmulatorContainerCustomConfigTest {
         String storageRulesCheck = firebaseContainer.execInContainer("cat", "/srv/firebase/storage.rules").getStdout();
         assertTrue(storageRulesCheck.contains("service firebase.storage"),
                 "Expected storage.rules to be present in the container");
+    }
+
+    @Test
+    public void testHosting() throws IOException, InterruptedException, URISyntaxException {
+        HttpClient httpClient = HttpClient.newHttpClient();
+        var request = HttpRequest.newBuilder()
+                .GET()
+                .uri(new URI("http://localhost:7006/test.me"))
+                .build();
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        var body = response.body();
+        assertEquals("This is a test file for hosting", body);
     }
 
 }

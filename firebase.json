@@ -9,12 +9,19 @@
       "host": "0.0.0.0",
       "port": 7005
     },
+    "hosting": {
+      "host": "0.0.0.0",
+      "port": 7006
+    },
     "ui": {
       "host": "0.0.0.0",
       "enabled": true,
       "port": 7009
     },
     "singleProjectMode": true
+  },
+  "hosting": {
+    "public": "src/test/hosting"
   },
   "firestore": {
     "rules": "firestore.rules",

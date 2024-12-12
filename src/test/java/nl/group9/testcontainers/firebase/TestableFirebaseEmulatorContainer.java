@@ -91,7 +91,6 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
 
         user.ifPresent(user -> builder.withDockerConfig().withUserId(user));
         group.ifPresent(group -> builder.withDockerConfig().withGroupId(group));
-        builder.withDockerConfig().withImage("node:23-alpine");
         builder.withFirebaseVersion("latest");
         builder.withProjectId("demo-test-project");
 

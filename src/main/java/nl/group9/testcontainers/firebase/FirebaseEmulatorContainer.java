@@ -22,7 +22,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebaseEmulatorContainer.class);
 
     public static final String FIREBASE_ROOT = "/srv/firebase";
-    public static final String FIREBASE_HOSTING_PATH = FIREBASE_ROOT + "/public";
+    public static final String FIREBASE_HOSTING_PATH = FIREBASE_ROOT + "/" + FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH;
     public static final String EMULATOR_DATA_PATH = FIREBASE_ROOT + "/data";
     public static final String EMULATOR_EXPORT_PATH = EMULATOR_DATA_PATH + "/emulator-data";
 
@@ -243,7 +243,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             FirebaseConfig firebaseConfig) {
     }
 
-    public static final String DEFAULT_IMAGE_NAME = "node:23-alpine";
+    // Use node:20 for now because of https://github.com/firebase/firebase-tools/issues/7173
+    public static final String DEFAULT_IMAGE_NAME = "node:20-alpine";
     public static final String DEFAULT_FIREBASE_VERSION = "latest";
 
     /**
@@ -604,10 +605,24 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
         emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().ifPresent(hostingPath -> {
             // Mount volume for static hosting content
-            this.withFileSystemBind(hostingPath.toString(), FIREBASE_HOSTING_PATH, BindMode.READ_ONLY);
+            this.withFileSystemBind(hostingPath.toString(), hostingPath(emulatorConfig), BindMode.READ_ONLY);
         });
 
         this.services = emulatorConfig.firebaseConfig().services;
+    }
+
+    static String hostingPath(EmulatorConfig emulatorConfig) {
+        var hostingPath = emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir();
+
+        return hostingPath
+                .map(Path::isAbsolute)
+                .map(absolute -> {
+                    if (absolute) {
+                        return FIREBASE_HOSTING_PATH;
+                    } else {
+                        return FIREBASE_ROOT + "/" + hostingPath.get();
+                    }
+                }).orElseThrow();
     }
 
     private static class FirebaseDockerBuilder {
@@ -676,6 +691,33 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 }
             }
 
+            if (emulatorConfig.customFirebaseJson.isPresent()) {
+                var hostingDirIsAbsolute = emulatorConfig
+                        .firebaseConfig
+                        .hostingConfig
+                        .hostingContentDir
+                        .map(Path::isAbsolute)
+                        .orElse(false);
+
+                if (hostingDirIsAbsolute) {
+                    throw new IllegalStateException("When using a custom firebase.json, the hosting path must be relative to the firebase.json file");
+                }
+
+                var firebasePath = emulatorConfig.customFirebaseJson.get().toAbsolutePath().getParent();
+
+                var hostingDirIsChildOfFirebaseJsonParent = emulatorConfig
+                        .firebaseConfig
+                        .hostingConfig
+                        .hostingContentDir
+                        .map(Path::toAbsolutePath)
+                        .map(h -> h.startsWith(firebasePath))
+                        .orElse(true);
+
+                if (!hostingDirIsChildOfFirebaseJsonParent) {
+                    throw new IllegalStateException("When using a custom firebase.json, the hosting path must be in the same subtree as the firebase.json file");
+                }
+            }
+
             // TODO: Validate if a custom firebase.json is defined, that the hosts are defined as 0.0.0.0
         }
 
@@ -690,7 +732,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                             "npm i -g firebase-tools@" + emulatorConfig.firebaseVersion() + " && " +
                             "deluser nginx && delgroup abuild && delgroup ping && " +
                             "mkdir -p " + FIREBASE_ROOT + " && " +
-                            "mkdir -p " + FIREBASE_HOSTING_PATH + " && " +
+                            "mkdir -p " + hostingPath(emulatorConfig) + " && " +
                             "mkdir -p " + EMULATOR_DATA_PATH + " && " +
                             "mkdir -p " + EMULATOR_EXPORT_PATH + " && " +
                             "chmod 777 -R /srv/*");
@@ -777,7 +819,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         private void setupHosting() {
             // Specify public directory if hosting is enabled
             if (emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().isPresent()) {
-                this.dockerBuilder.volume(FIREBASE_HOSTING_PATH);
+                this.dockerBuilder.volume(hostingPath(emulatorConfig));
             }
         }
 

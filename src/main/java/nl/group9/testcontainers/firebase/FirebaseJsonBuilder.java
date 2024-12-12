@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 class FirebaseJsonBuilder {
 
     private static final String ALL_IP = "0.0.0.0";
+    public static final String FIREBASE_HOSTING_SUBPATH = "public";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final FirebaseEmulatorContainer.EmulatorConfig emulatorConfig;
@@ -41,7 +42,7 @@ class FirebaseJsonBuilder {
         //        private ExtensionsConfig extensions;
         configureFirestore();
         //        private Object functions;
-        //        private Object hosting;
+        configureHosting();
         //        private Remoteconfig remoteconfig;
         configureStorage();
     }
@@ -160,6 +161,15 @@ class FirebaseJsonBuilder {
                 var indexFile = fileRelativeToCustomJsonOrDefault(index, "firestore.indexes.json");
                 firestore.put("indexes", indexFile);
             });
+        }
+    }
+
+    private void configureHosting() {
+        if (isEmulatorEnabled(FirebaseEmulatorContainer.Emulator.FIREBASE_HOSTING)) {
+            var hosting = new HashMap<String, String>();
+            root.setHosting(hosting);
+
+            hosting.put("public", FIREBASE_HOSTING_SUBPATH);
         }
     }
 
