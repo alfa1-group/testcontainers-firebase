@@ -14,13 +14,13 @@ The following emulators have been verified to work:
 * Firebase Auth
 * Firebase Firestore
 * Firebase Emulator UI
+* Firebase Hosting
 * Realtime Database
 * PubSub
 * Cloud Storage
 
 The following emulators need additional work:
 
-* Firebase Hosting
 * Functions
 
 The following emulators are currently unverified:
