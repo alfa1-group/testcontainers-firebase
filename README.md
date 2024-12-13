@@ -68,8 +68,14 @@ Customize the Docker environment for the emulator container:
     .withImage("node:20-alpine")  // Base image for the container
     .withUserId(1000)            // User ID inside the container
     .withGroupId(1000)           // Group ID inside the container
+    .followStdOut(true)          // Pipe the stdout of the container to the logging of the host
+    .followStdErr(true)          // Pipe the stderr of the container to the logging of the host
     .done()
 ```
+
+When running in a non-Docker-Desktop environment, you need to specify the user id and the group id to 
+allow the docker container to read/write data from the volumes mounted on the host system. Two
+convenience methods (`withUserIdFromEnv` and `withGroupIdFromEnv`) have been created to try to read this info from an environment variable. These methods will silently fail if these IDs cannot be read.
 
 ### Firebase Configuration
 

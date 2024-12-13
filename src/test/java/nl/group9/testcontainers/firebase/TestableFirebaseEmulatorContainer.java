@@ -13,23 +13,6 @@ import java.util.function.Consumer;
  */
 public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer {
 
-    /*
-     * We determine the current group and user using an env variable. This is set by the GitHub Actions runner.
-     * The user and group are used to set the user/group for the user in the docker container run by
-     * TestContainers for the Firebase Emulators. This way, the data exported by the Firebase Emulators
-     * can be read from the build.
-     */
-    protected static Optional<Integer> user = Optional
-            .ofNullable(System.getenv("CURRENT_USER"))
-            .map(Integer::valueOf);
-    protected static Optional<Integer> group = Optional
-            .ofNullable(System.getenv("CURRENT_GROUP"))
-            .map(Integer::valueOf);
-
-    static {
-        System.out.println("Running as user " + user + " and group " + group);
-    }
-
     private final String name;
     private final Consumer<FirebaseOptions.Builder> options;
     private FirebaseApp app;
@@ -88,8 +71,16 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
     public static Builder testBuilder() {
         var builder = new Builder();
 
-        user.ifPresent(user -> builder.withDockerConfig().withUserId(user));
-        group.ifPresent(group -> builder.withDockerConfig().withGroupId(group));
+        /*
+         * We determine the current group and user using an env variable. This is set by the GitHub Actions runner.
+         * The user and group are used to set the user/group for the user in the docker container run by
+         * TestContainers for the Firebase Emulators. This way, the data exported by the Firebase Emulators
+         * can be read from the build.
+         */
+        builder.withDockerConfig()
+            .withUserIdFromEnv("CURRENT_USER")
+            .withGroupIdFromEnv("CURRENT_GROUP")
+            .done();
         builder.withFirebaseVersion("latest");
         builder.withProjectId("demo-test-project");
 

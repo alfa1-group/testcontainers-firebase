@@ -12,7 +12,6 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -433,9 +432,22 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * @return The builder
              */
             public DockerConfigBuilder withUserId(int userId) {
+                return withUserId(Optional.of(userId));
+            }
+
+            /**
+             * Try to configure the user id to use within docker from an environment variable.
+             * @param env The environment variable
+             * @return The builder
+             */
+            public DockerConfigBuilder withUserIdFromEnv(String env) {
+                return withUserId(readIdFromEnv(env));
+            }
+
+            private DockerConfigBuilder withUserId(Optional<Integer> userId) {
                 BaseBuilder.this.dockerConfig = new DockerConfig(
                         BaseBuilder.this.dockerConfig.imageName(),
-                        Optional.of(userId),
+                        userId,
                         BaseBuilder.this.dockerConfig.groupId(),
                         BaseBuilder.this.dockerConfig.followStdOut(),
                         BaseBuilder.this.dockerConfig.followStdErr()
@@ -449,10 +461,23 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * @return The builder
              */
             public DockerConfigBuilder withGroupId(int groupId) {
+                return withGroupId(Optional.of(groupId));
+            }
+
+            /**
+             * Try to configure the group id to use within docker from an environment variable.
+             * @param env The environment variable
+             * @return The builder
+             */
+            public DockerConfigBuilder withGroupIdFromEnv(String env) {
+                return withGroupId(readIdFromEnv(env));
+            }
+
+            private DockerConfigBuilder withGroupId(Optional<Integer> groupId) {
                 BaseBuilder.this.dockerConfig = new DockerConfig(
                         BaseBuilder.this.dockerConfig.imageName(),
                         BaseBuilder.this.dockerConfig.userId(),
-                        Optional.of(groupId),
+                        groupId,
                         BaseBuilder.this.dockerConfig.followStdOut(),
                         BaseBuilder.this.dockerConfig.followStdErr()
                 );
@@ -497,6 +522,16 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              */
             public BaseBuilder<T> done() {
                 return BaseBuilder.this;
+            }
+
+            private Optional<Integer> readIdFromEnv(String env) {
+                try {
+                    return Optional
+                            .ofNullable(System.getenv(env))
+                            .map(Integer::valueOf);
+                } catch (NumberFormatException e) {
+                    return Optional.empty();
+                }
             }
         }
 
@@ -970,6 +1005,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             commands.add("chown " + user + ":" + group + " -R /srv/*");
 
             var runCmd = String.join(" && ", commands);
+
+            LOGGER.info("Running docker container as user/group: {}:{}", user, group);
 
             dockerBuilder
                     .run(runCmd)
