@@ -3,9 +3,7 @@ package nl.group9.testcontainers.firebase;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.internal.EmulatorCredentials;
-import org.testcontainers.containers.output.OutputFrame;
 
-import java.io.PrintStream;
 import java.util.Optional;
 import java.util.function.Consumer;
 
