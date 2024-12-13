@@ -777,25 +777,40 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     public FirebaseEmulatorContainer(EmulatorConfig emulatorConfig) {
         super(new FirebaseDockerBuilder(emulatorConfig).build());
 
+        this.services = emulatorConfig.firebaseConfig().services;
+        this.followStdOut = emulatorConfig.dockerConfig().followStdOut();
+        this.followStdErr = emulatorConfig.dockerConfig().followStdErr();
+        this.afterStart = emulatorConfig.dockerConfig().afterStart();
+
         emulatorConfig.emulatorData().ifPresent(path -> {
             // https://firebase.google.com/docs/emulator-suite/install_and_configure#export_and_import_emulator_data
             // Mount the volume to the specified path
             this.withFileSystemBind(path.toString(), EMULATOR_DATA_PATH, BindMode.READ_WRITE);
         });
 
-        emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().ifPresent(hostingPath ->
+        if (this.services.containsKey(Emulator.FIREBASE_HOSTING)) {
+            var hostingPath = emulatorConfig
+                    .firebaseConfig()
+                    .hostingConfig()
+                    .hostingContentDir()
+                    .map(Path::toString)
+                    .orElse(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH);
+
             // Mount volume for static hosting content
-            this.withFileSystemBind(hostingPath.toString(), hostingPath(emulatorConfig), BindMode.READ_ONLY)
-        );
+            this.withFileSystemBind(hostingPath, hostingPath(emulatorConfig), BindMode.READ_ONLY);
+        }
 
-        emulatorConfig.firebaseConfig().functionsConfig().functionsPath().ifPresent(functionsPath ->
-            this.withFileSystemBind(functionsPath.toString(), functionsPath(emulatorConfig), BindMode.READ_ONLY)
-        );
+        if (this.services.containsKey(Emulator.CLOUD_FUNCTIONS)) {
+            var functionsPath = emulatorConfig
+                    .firebaseConfig()
+                    .functionsConfig()
+                    .functionsPath()
+                    .map(Path::toString)
+                    .orElse(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH);
 
-        this.services = emulatorConfig.firebaseConfig().services;
-        this.followStdOut = emulatorConfig.dockerConfig().followStdOut();
-        this.followStdErr = emulatorConfig.dockerConfig().followStdErr();
-        this.afterStart = emulatorConfig.dockerConfig().afterStart();
+            // Mount volume for functions
+            this.withFileSystemBind(functionsPath, functionsPath(emulatorConfig), BindMode.READ_ONLY);
+        }
     }
 
     static String hostingPath(EmulatorConfig emulatorConfig) {

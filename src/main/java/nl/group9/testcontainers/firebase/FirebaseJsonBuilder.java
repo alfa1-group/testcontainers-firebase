@@ -17,6 +17,7 @@ class FirebaseJsonBuilder {
 
     private static final String ALL_IP = "0.0.0.0";
     public static final String FIREBASE_HOSTING_SUBPATH = "public";
+    public static final String FIREBASE_FUNCTIONS_SUBPATH = "functions";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final FirebaseEmulatorContainer.EmulatorConfig emulatorConfig;
