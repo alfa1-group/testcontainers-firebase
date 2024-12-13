@@ -69,9 +69,12 @@ public class FirebaseEmulatorContainerIntegrationTest {
         }
     }
 
-    private static final TestableFirebaseEmulatorContainer firebaseContainer = TestableFirebaseEmulatorContainer.testBuilder()
-            .withName("FirebaseEmulatorContainerIntegrationTest")
-            .withFirebaseOptions(FirebaseEmulatorContainerIntegrationTest::customizeFirebaseOptions)
+    private static final TestableFirebaseEmulatorContainer testContainer = new TestableFirebaseEmulatorContainer(
+            "FirebaseEmulatorContainerIntegrationTest",
+            FirebaseEmulatorContainerIntegrationTest::customizeFirebaseOptions
+    );
+
+    private static final FirebaseEmulatorContainer firebaseContainer = testContainer.testBuilder()
             .withEmulatorData(tempEmulatorDataDir.toPath())
             .withFirebaseConfig()
             .withHostingPath(tempHostingContentDir.toPath())
@@ -178,7 +181,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
         FirebaseProcessEnvironment.setenv("FIREBASE_AUTH_EMULATOR_HOST", firebaseContainer.getHost() + ":" + authPort);
 
         // Initialize FirebaseOptions without setting the auth emulator host directly
-        FirebaseAuth auth = FirebaseAuth.getInstance(firebaseContainer.getApp());
+        FirebaseAuth auth = FirebaseAuth.getInstance(testContainer.getApp());
 
         // Create a test user and verify it
         UserRecord.CreateRequest request = new UserRecord.CreateRequest()
@@ -215,7 +218,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
 
     @Test
     public void testRealtimeDatabaseEmulatorConnection() throws ExecutionException, InterruptedException {
-        DatabaseReference ref = FirebaseDatabase.getInstance(firebaseContainer.getApp()).getReference("testData");
+        DatabaseReference ref = FirebaseDatabase.getInstance(testContainer.getApp()).getReference("testData");
 
         // Write data to the database
         ref.setValueAsync("testValue").get();

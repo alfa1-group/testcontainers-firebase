@@ -4,72 +4,41 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.internal.EmulatorCredentials;
 
-import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
  * Subclass of {@link FirebaseEmulatorContainer} which has some extra facilities to ease testing. Functionally
  * this class is equivalent of its superclass with respect to the testing we need to perform.
  */
-public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer {
+public class TestableFirebaseEmulatorContainer {
 
     private final String name;
     private final Consumer<FirebaseOptions.Builder> options;
     private FirebaseApp app;
 
     /**
-     * Builder for the {@link TestableFirebaseEmulatorContainer}
+     * Creates a new Firebase Emulator container
+     *
+     * @param name The name of the firebase app (must be unique across the JVM).
+     * @param options Consumer to handle additional changes to the FirebaseOptions.Builder.
      */
-    public static class Builder extends FirebaseEmulatorContainer.BaseBuilder<TestableFirebaseEmulatorContainer> {
-
-        private Consumer<FirebaseOptions.Builder> options = (options) -> {};
-        private String name;
-
-        /**
-         * Set the name of the firebase App. This needs to be unique across the JVM
-         * @param name The name of the firebase app
-         * @return The builder
-         */
-        public Builder withName(String name) {
-            this.name = name;
-            return this;
-        }
-
-        /**
-         * Set an additional handler for the firebase options builder
-         * @param options The handler for the Firebase options builder
-         * @return The builder
-         */
-        public Builder withFirebaseOptions(Consumer<FirebaseOptions.Builder> options) {
-            this.options = options;
-            return this;
-        }
-
-        /**
-         * Create the container
-         * @return The container.
-         */
-        @Override
-        public TestableFirebaseEmulatorContainer build() {
-            return new TestableFirebaseEmulatorContainer(buildConfig(), name, options);
-        }
+    public TestableFirebaseEmulatorContainer(String name, Consumer<FirebaseOptions.Builder> options) {
+        this.name = name;
+        this.options = options;
     }
 
     /**
      * Creates a new Firebase Emulator container
      *
-     * @param firebaseConfig The generic configuration of the firebase emulators
      * @param name The name of the firebase app (must be unique across the JVM).
-     * @param options Consumer to handle additional changes to the FirebaseOptions.Builder.
      */
-    private TestableFirebaseEmulatorContainer(EmulatorConfig firebaseConfig, String name, Consumer<FirebaseOptions.Builder> options) {
-        super(firebaseConfig);
+    public TestableFirebaseEmulatorContainer(String name) {
         this.name = name;
-        this.options = options;
+        this.options = null;
     }
 
-    public static Builder testBuilder() {
-        var builder = new Builder();
+    public FirebaseEmulatorContainer.Builder testBuilder() {
+        var builder = FirebaseEmulatorContainer.builder();
 
         /*
          * We determine the current group and user using an env variable. This is set by the GitHub Actions runner.
@@ -80,6 +49,7 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
         builder.withDockerConfig()
             .withUserIdFromEnv("CURRENT_USER")
             .withGroupIdFromEnv("CURRENT_GROUP")
+            .afterStart(this::afterStart)
             .done();
         builder.withFirebaseVersion("latest");
         builder.withProjectId("demo-test-project");
@@ -87,10 +57,7 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
         return builder;
     }
 
-    @Override
-    public void start() {
-        super.start();
-
+    private void afterStart(FirebaseEmulatorContainer container) {
         var firebaseBuilder = FirebaseOptions.builder()
                 .setProjectId("demo-test-project")
                 .setCredentials(new EmulatorCredentials());

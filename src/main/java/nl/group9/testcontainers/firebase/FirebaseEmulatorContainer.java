@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -151,13 +152,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
      * @param groupId The group id to run the docker image
      * @param followStdOut Pipe stdout of the container to stdout of the host
      * @param followStdErr Pipe stderr of the container to stderr of the host
+     * @param afterStart Callback to handle additional logic after the container has started.
      */
     public record DockerConfig(
             String imageName,
             Optional<Integer> userId,
             Optional<Integer> groupId,
             boolean followStdOut,
-            boolean followStdErr) {
+            boolean followStdErr,
+            Consumer<FirebaseEmulatorContainer> afterStart) {
 
         /**
          * Default settings
@@ -167,7 +170,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 Optional.empty(),
                 Optional.empty(),
                 true,
-                true
+                true,
+                null
         );
     }
 
@@ -275,19 +279,19 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     /**
      * Builder for the {@link FirebaseEmulatorContainer} configuration.
      */
-    public static abstract class BaseBuilder<T extends FirebaseEmulatorContainer> {
+    public static class Builder {
 
         private DockerConfig dockerConfig = DockerConfig.DEFAULT;
         private String firebaseVersion = DEFAULT_FIREBASE_VERSION;
-        private Optional<String> projectId = Optional.empty();
-        private Optional<String> token = Optional.empty();
-        private Optional<String> javaToolOptions = Optional.empty();
-        private Optional<Path> emulatorData = Optional.empty();
+        private String projectId = null;
+        private String token = null;
+        private String javaToolOptions = null;
+        private Path emulatorData = null;
 
-        private Optional<Path> customFirebaseJson;
+        private Path customFirebaseJson;
         private FirebaseConfig firebaseConfig;
 
-        protected BaseBuilder() {
+        protected Builder() {
         }
 
         /**
@@ -303,7 +307,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @param firebaseVersion The firebase version
          * @return The builder
          */
-        public BaseBuilder<T> withFirebaseVersion(String firebaseVersion) {
+        public Builder withFirebaseVersion(String firebaseVersion) {
             this.firebaseVersion = firebaseVersion;
             return this;
         }
@@ -313,8 +317,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @param projectId The project id
          * @return The builder
          */
-        public BaseBuilder<T> withProjectId(String projectId) {
-            this.projectId = Optional.of(projectId);
+        public Builder withProjectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 
@@ -323,8 +327,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @param token The token
          * @return The builder
          */
-        public BaseBuilder<T> withToken(String token) {
-            this.token = Optional.of(token);
+        public Builder withToken(String token) {
+            this.token = token;
             return this;
         }
 
@@ -333,8 +337,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @param javaToolOptions The java tool options
          * @return The builder
          */
-        public BaseBuilder<T> withJavaToolOptions(String javaToolOptions) {
-            this.javaToolOptions = Optional.of(javaToolOptions);
+        public Builder withJavaToolOptions(String javaToolOptions) {
+            this.javaToolOptions = javaToolOptions;
             return this;
         }
 
@@ -343,8 +347,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @param emulatorData The emulator data
          * @return The builder
          */
-        public BaseBuilder<T> withEmulatorData(Path emulatorData) {
-            this.emulatorData = Optional.of(emulatorData);
+        public Builder withEmulatorData(Path emulatorData) {
+            this.emulatorData = emulatorData;
             return this;
         }
 
@@ -354,10 +358,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * @return The builder
          * @throws IOException In case the file could not be read.
          */
-        public BaseBuilder<T> readFromFirebaseJson(Path customFirebaseJson ) throws IOException {
+        public Builder readFromFirebaseJson(Path customFirebaseJson ) throws IOException {
             var reader = new CustomFirebaseConfigReader();
             this.firebaseConfig = reader.readFromFirebase(customFirebaseJson);
-            this.customFirebaseJson = Optional.of(customFirebaseJson);
+            this.customFirebaseJson = customFirebaseJson;
             return this;
         }
 
@@ -375,7 +379,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          */
         protected EmulatorConfig buildConfig() {
             if (firebaseConfig == null) {
-                // Try to auto-load the firebase.json configuration
+                // Try to autoload the firebase.json configuration
                 var defaultFirebaseJson = new File("firebase.json").toPath();
 
                 try {
@@ -388,11 +392,11 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             return new EmulatorConfig(
                     dockerConfig,
                     firebaseVersion,
-                    projectId,
-                    token,
-                    customFirebaseJson,
-                    javaToolOptions,
-                    emulatorData,
+                    Optional.ofNullable(projectId),
+                    Optional.ofNullable(token),
+                    Optional.ofNullable(customFirebaseJson),
+                    Optional.ofNullable(javaToolOptions),
+                    Optional.ofNullable(emulatorData),
                     firebaseConfig
             );
         }
@@ -401,7 +405,9 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
          * Build the final configuration
          * @return the final configuration.
          */
-        public abstract T build();
+        public FirebaseEmulatorContainer build() {
+            return new FirebaseEmulatorContainer(buildConfig());
+        }
 
         /**
          * Builder for the docker configuration.
@@ -416,12 +422,13 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * @return The builder
              */
             public DockerConfigBuilder withImage(String imageName) {
-                BaseBuilder.this.dockerConfig = new DockerConfig(
+                Builder.this.dockerConfig = new DockerConfig(
                         imageName,
-                        BaseBuilder.this.dockerConfig.userId(),
-                        BaseBuilder.this.dockerConfig.groupId(),
-                        BaseBuilder.this.dockerConfig.followStdOut(),
-                        BaseBuilder.this.dockerConfig.followStdErr()
+                        Builder.this.dockerConfig.userId(),
+                        Builder.this.dockerConfig.groupId(),
+                        Builder.this.dockerConfig.followStdOut(),
+                        Builder.this.dockerConfig.followStdErr(),
+                        Builder.this.dockerConfig.afterStart()
                 );
                 return this;
             }
@@ -445,12 +452,13 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             }
 
             private DockerConfigBuilder withUserId(Optional<Integer> userId) {
-                BaseBuilder.this.dockerConfig = new DockerConfig(
-                        BaseBuilder.this.dockerConfig.imageName(),
+                Builder.this.dockerConfig = new DockerConfig(
+                        Builder.this.dockerConfig.imageName(),
                         userId,
-                        BaseBuilder.this.dockerConfig.groupId(),
-                        BaseBuilder.this.dockerConfig.followStdOut(),
-                        BaseBuilder.this.dockerConfig.followStdErr()
+                        Builder.this.dockerConfig.groupId(),
+                        Builder.this.dockerConfig.followStdOut(),
+                        Builder.this.dockerConfig.followStdErr(),
+                        Builder.this.dockerConfig.afterStart()
                 );
                 return this;
             }
@@ -474,12 +482,13 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             }
 
             private DockerConfigBuilder withGroupId(Optional<Integer> groupId) {
-                BaseBuilder.this.dockerConfig = new DockerConfig(
-                        BaseBuilder.this.dockerConfig.imageName(),
-                        BaseBuilder.this.dockerConfig.userId(),
+                Builder.this.dockerConfig = new DockerConfig(
+                        Builder.this.dockerConfig.imageName(),
+                        Builder.this.dockerConfig.userId(),
                         groupId,
-                        BaseBuilder.this.dockerConfig.followStdOut(),
-                        BaseBuilder.this.dockerConfig.followStdErr()
+                        Builder.this.dockerConfig.followStdOut(),
+                        Builder.this.dockerConfig.followStdErr(),
+                        Builder.this.dockerConfig.afterStart()
                 );
                 return this;
             }
@@ -490,12 +499,13 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * @return The builder
              */
             public DockerConfigBuilder followStdOut(boolean followStdOut) {
-                BaseBuilder.this.dockerConfig = new DockerConfig(
-                        BaseBuilder.this.dockerConfig.imageName(),
-                        BaseBuilder.this.dockerConfig.userId(),
-                        BaseBuilder.this.dockerConfig.groupId(),
+                Builder.this.dockerConfig = new DockerConfig(
+                        Builder.this.dockerConfig.imageName(),
+                        Builder.this.dockerConfig.userId(),
+                        Builder.this.dockerConfig.groupId(),
                         followStdOut,
-                        BaseBuilder.this.dockerConfig.followStdErr()
+                        Builder.this.dockerConfig.followStdErr(),
+                        Builder.this.dockerConfig.afterStart()
                 );
                 return this;
             }
@@ -506,12 +516,30 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * @return The builder
              */
             public DockerConfigBuilder followStdErr(boolean followStdErr) {
-                BaseBuilder.this.dockerConfig = new DockerConfig(
-                        BaseBuilder.this.dockerConfig.imageName(),
-                        BaseBuilder.this.dockerConfig.userId(),
-                        BaseBuilder.this.dockerConfig.groupId(),
-                        BaseBuilder.this.dockerConfig.followStdOut(),
-                        followStdErr
+                Builder.this.dockerConfig = new DockerConfig(
+                        Builder.this.dockerConfig.imageName(),
+                        Builder.this.dockerConfig.userId(),
+                        Builder.this.dockerConfig.groupId(),
+                        Builder.this.dockerConfig.followStdOut(),
+                        followStdErr,
+                        Builder.this.dockerConfig.afterStart()
+                );
+                return this;
+            }
+
+            /**
+             * Set a callback to run after the container has started.
+             * @param afterStart Callback to be executed after the container has started
+             * @return The builder
+             */
+            public DockerConfigBuilder afterStart(Consumer<FirebaseEmulatorContainer> afterStart) {
+                Builder.this.dockerConfig = new DockerConfig(
+                        Builder.this.dockerConfig.imageName(),
+                        Builder.this.dockerConfig.userId(),
+                        Builder.this.dockerConfig.groupId(),
+                        Builder.this.dockerConfig.followStdOut(),
+                        Builder.this.dockerConfig.followStdErr(),
+                        afterStart
                 );
                 return this;
             }
@@ -520,8 +548,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * Finish the docker configuration
              * @return The primary builder
              */
-            public BaseBuilder<T> done() {
-                return BaseBuilder.this;
+            public Builder done() {
+                return Builder.this;
             }
 
             private Optional<Integer> readIdFromEnv(String env) {
@@ -645,7 +673,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             }
 
             /**
-             * Inlucde an emulator on a fixed port
+             * Include an emulator on a fixed port
              * @param emulator The emulator
              * @param port The port to expose on
              * @return The builder
@@ -683,32 +711,25 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
              * Finish the firebase configuration
              * @return The primary builder
              */
-            public BaseBuilder<T> done() {
-                BaseBuilder.this.firebaseConfig = new FirebaseConfig(
+            public Builder done() {
+                Builder.this.firebaseConfig = new FirebaseConfig(
                         hostingConfig,
                         storageConfig,
                         firestoreConfig,
                         functionsConfig,
                         services
                 );
-                BaseBuilder.this.customFirebaseJson = Optional.empty();
+                Builder.this.customFirebaseJson = null;
 
-                return BaseBuilder.this;
+                return Builder.this;
             }
-        }
-    }
-
-    public static class Builder extends BaseBuilder<FirebaseEmulatorContainer> {
-
-        @Override
-        public FirebaseEmulatorContainer build() {
-            return new FirebaseEmulatorContainer(buildConfig());
         }
     }
 
     private final Map<Emulator, ExposedPort> services;
     private final boolean followStdOut;
     private final boolean followStdErr;
+    private final Consumer<FirebaseEmulatorContainer> afterStart;
 
     /**
      * Create the builder for the emulator container
@@ -744,6 +765,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         this.services = emulatorConfig.firebaseConfig().services;
         this.followStdOut = emulatorConfig.dockerConfig().followStdOut();
         this.followStdErr = emulatorConfig.dockerConfig().followStdErr();
+        this.afterStart = emulatorConfig.dockerConfig().afterStart();
     }
 
     static String hostingPath(EmulatorConfig emulatorConfig) {
@@ -1074,6 +1096,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
         if (followStdErr) {
             followOutput(this::writeToStdErr, OutputFrame.OutputType.STDERR);
+        }
+
+        if (afterStart != null) {
+            afterStart.accept(this);
         }
     }
 
