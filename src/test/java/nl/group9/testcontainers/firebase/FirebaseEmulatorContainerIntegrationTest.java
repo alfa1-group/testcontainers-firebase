@@ -193,7 +193,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
     }
 
     @Test
-    public void testFirestoreEmulatorConnection() throws ExecutionException, InterruptedException {
+    public void testFirestoreEmulatorConnection() throws Exception {
         int firestorePort = firebaseContainer.emulatorPort(FirebaseEmulatorContainer.Emulator.CLOUD_FIRESTORE);
 
         FirestoreOptions options = FirestoreOptions.newBuilder()
@@ -203,12 +203,16 @@ public class FirebaseEmulatorContainerIntegrationTest {
                 .build();
         Firestore firestore = options.getService();
 
-        DocumentReference docRef = firestore.collection("testCollection").document("testDoc");
-        ApiFuture<WriteResult> result = docRef.set(Map.of("field", "value"));
+        try {
+            DocumentReference docRef = firestore.collection("testCollection").document("testDoc");
+            ApiFuture<WriteResult> result = docRef.set(Map.of("field", "value"));
 
-        assertNotNull(result.get());
-        DocumentSnapshot snapshot = docRef.get().get();
-        assertEquals("value", snapshot.getString("field"));
+            assertNotNull(result.get());
+            DocumentSnapshot snapshot = docRef.get().get();
+            assertEquals("value", snapshot.getString("field"));
+        } finally {
+            firestore.close();
+        }
     }
 
     @Test
