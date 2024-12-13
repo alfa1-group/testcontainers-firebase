@@ -175,15 +175,15 @@ Specify a directory to import/export emulator data:
         "ui": {
           "port": 4000,
           "enabled": true,
-          "host": ".0.0.0."
+          "host": "0.0.0.0"
         },  
         "hub": {
           "port": 4400,
-          "host": ".0.0.0."
+          "host": "0.0.0.0"
         },     
         "logging": {
           "port": 4500,
-          "host": ".0.0.0."
+          "host": "0.0.0.0"
         }     
       }
     }
