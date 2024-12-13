@@ -794,7 +794,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     .hostingConfig()
                     .hostingContentDir()
                     .map(Path::toString)
-                    .orElse(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH);
+                    .orElse(new File(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH).getAbsolutePath());
 
             // Mount volume for static hosting content
             this.withFileSystemBind(hostingPath, containerHostingPath(emulatorConfig), BindMode.READ_ONLY);
@@ -806,7 +806,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     .functionsConfig()
                     .functionsPath()
                     .map(Path::toString)
-                    .orElse(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH);
+                    .orElse(new File(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH).getAbsolutePath());
 
             // Mount volume for functions
             this.withFileSystemBind(functionsPath, containerFunctionsPath(emulatorConfig), BindMode.READ_ONLY);
