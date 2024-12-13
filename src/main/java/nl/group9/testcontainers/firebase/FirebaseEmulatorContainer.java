@@ -824,15 +824,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     } else {
                         return FIREBASE_ROOT + "/" + hostingPath.get();
                     }
-                }).orElse(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH);
+                }).orElse(FIREBASE_HOSTING_PATH);
     }
 
     static String containerFunctionsPath(EmulatorConfig emulatorConfig) {
-        return emulatorConfig
+        return FIREBASE_ROOT + "/" +  emulatorConfig
                 .firebaseConfig()
                 .functionsConfig()
                 .functionsPath()
-                .map(path -> FIREBASE_ROOT + "/" + path)
+                .map(Path::toString)
                 .orElse(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH);
     }
 
