@@ -102,9 +102,6 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
     public void start() {
         super.start();
 
-        followOutput(this::writeToStdOut, OutputFrame.OutputType.STDOUT);
-        followOutput(this::writeToStdErr, OutputFrame.OutputType.STDERR);
-
         var firebaseBuilder = FirebaseOptions.builder()
                 .setProjectId("demo-test-project")
                 .setCredentials(new EmulatorCredentials());
@@ -115,18 +112,6 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
 
         FirebaseOptions options = firebaseBuilder.build();
         app = FirebaseApp.initializeApp(options, name);
-    }
-
-    private void writeToStdOut(OutputFrame frame) {
-        writeOutputFrame(frame, System.out);
-    }
-
-    private void writeToStdErr(OutputFrame frame) {
-        writeOutputFrame(frame, System.err);
-    }
-
-    private void writeOutputFrame(OutputFrame frame, PrintStream output) {
-        output.println(frame.getUtf8StringWithoutLineEnding());
     }
 
     public FirebaseApp getApp() {

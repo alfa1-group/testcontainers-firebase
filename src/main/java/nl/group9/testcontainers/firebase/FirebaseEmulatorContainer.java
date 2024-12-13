@@ -2,14 +2,17 @@ package nl.group9.testcontainers.firebase;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -147,11 +150,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
      * @param imageName The name of the docker image
      * @param userId The user id to run the docker image
      * @param groupId The group id to run the docker image
+     * @param followStdOut Pipe stdout of the container to stdout of the host
+     * @param followStdErr Pipe stderr of the container to stderr of the host
      */
     public record DockerConfig(
             String imageName,
             Optional<Integer> userId,
-            Optional<Integer> groupId) {
+            Optional<Integer> groupId,
+            boolean followStdOut,
+            boolean followStdErr) {
 
         /**
          * Default settings
@@ -159,7 +166,9 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         public static final DockerConfig DEFAULT = new DockerConfig(
                 DEFAULT_IMAGE_NAME,
                 Optional.empty(),
-                Optional.empty()
+                Optional.empty(),
+                true,
+                true
         );
     }
 
@@ -411,7 +420,9 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 BaseBuilder.this.dockerConfig = new DockerConfig(
                         imageName,
                         BaseBuilder.this.dockerConfig.userId(),
-                        BaseBuilder.this.dockerConfig.groupId()
+                        BaseBuilder.this.dockerConfig.groupId(),
+                        BaseBuilder.this.dockerConfig.followStdOut(),
+                        BaseBuilder.this.dockerConfig.followStdErr()
                 );
                 return this;
             }
@@ -425,7 +436,9 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 BaseBuilder.this.dockerConfig = new DockerConfig(
                         BaseBuilder.this.dockerConfig.imageName(),
                         Optional.of(userId),
-                        BaseBuilder.this.dockerConfig.groupId()
+                        BaseBuilder.this.dockerConfig.groupId(),
+                        BaseBuilder.this.dockerConfig.followStdOut(),
+                        BaseBuilder.this.dockerConfig.followStdErr()
                 );
                 return this;
             }
@@ -439,7 +452,41 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 BaseBuilder.this.dockerConfig = new DockerConfig(
                         BaseBuilder.this.dockerConfig.imageName(),
                         BaseBuilder.this.dockerConfig.userId(),
-                        Optional.of(groupId)
+                        Optional.of(groupId),
+                        BaseBuilder.this.dockerConfig.followStdOut(),
+                        BaseBuilder.this.dockerConfig.followStdErr()
+                );
+                return this;
+            }
+
+            /**
+             * Pipe the container stdout to the host stdout. This can ease debugging of container issues.
+             * @param followStdOut Whether to pipe the container stdout to the host stdout
+             * @return The builder
+             */
+            public DockerConfigBuilder followStdOut(boolean followStdOut) {
+                BaseBuilder.this.dockerConfig = new DockerConfig(
+                        BaseBuilder.this.dockerConfig.imageName(),
+                        BaseBuilder.this.dockerConfig.userId(),
+                        BaseBuilder.this.dockerConfig.groupId(),
+                        followStdOut,
+                        BaseBuilder.this.dockerConfig.followStdErr()
+                );
+                return this;
+            }
+
+            /**
+             * Pipe the container stdout to the host stderr. This can ease debugging of container issues.
+             * @param followStdErr Whether to pipe the container stderr to the host stdout
+             * @return The builder
+             */
+            public DockerConfigBuilder followStdErr(boolean followStdErr) {
+                BaseBuilder.this.dockerConfig = new DockerConfig(
+                        BaseBuilder.this.dockerConfig.imageName(),
+                        BaseBuilder.this.dockerConfig.userId(),
+                        BaseBuilder.this.dockerConfig.groupId(),
+                        BaseBuilder.this.dockerConfig.followStdOut(),
+                        followStdErr
                 );
                 return this;
             }
@@ -625,6 +672,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     }
 
     private final Map<Emulator, ExposedPort> services;
+    private final boolean followStdOut;
+    private final boolean followStdErr;
 
     /**
      * Create the builder for the emulator container
@@ -658,6 +707,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         );
 
         this.services = emulatorConfig.firebaseConfig().services;
+        this.followStdOut = emulatorConfig.dockerConfig().followStdOut();
+        this.followStdErr = emulatorConfig.dockerConfig().followStdErr();
     }
 
     static String hostingPath(EmulatorConfig emulatorConfig) {
@@ -973,6 +1024,22 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
     }
 
+    /**
+     * Override start to handle logging redirection
+     */
+    @Override
+    public void start() {
+        super.start();
+
+        if (followStdOut) {
+            followOutput(this::writeToStdOut, OutputFrame.OutputType.STDOUT);
+        }
+
+        if (followStdErr) {
+            followOutput(this::writeToStdErr, OutputFrame.OutputType.STDERR);
+        }
+    }
+
     @Override
     public void stop() {
         /*
@@ -1029,6 +1096,18 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 .collect(Collectors.toMap(
                         e -> e,
                         this::emulatorPort));
+    }
+
+    private void writeToStdOut(OutputFrame frame) {
+        writeOutputFrame(frame, Level.INFO);
+    }
+
+    private void writeToStdErr(OutputFrame frame) {
+        writeOutputFrame(frame, Level.ERROR);
+    }
+
+    private void writeOutputFrame(OutputFrame frame, Level level) {
+        LOGGER.atLevel(level).log(frame.getUtf8StringWithoutLineEnding());
     }
 
     private String getEmulatorEndpoint(Emulator emulator) {
