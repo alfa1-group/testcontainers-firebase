@@ -24,10 +24,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebaseEmulatorContainer.class);
 
-    public static final String FIREBASE_ROOT = "/srv/firebase";
-    public static final String FIREBASE_HOSTING_PATH = FIREBASE_ROOT + "/" + FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH;
-    public static final String EMULATOR_DATA_PATH = FIREBASE_ROOT + "/data";
-    public static final String EMULATOR_EXPORT_PATH = EMULATOR_DATA_PATH + "/emulator-data";
+    private static final String FIREBASE_ROOT = "/srv/firebase";
+    private static final String FIREBASE_HOSTING_PATH = FIREBASE_ROOT + "/" + FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH;
+    private static final String EMULATOR_DATA_PATH = FIREBASE_ROOT + "/data";
+    private static final String EMULATOR_EXPORT_PATH = EMULATOR_DATA_PATH + "/emulator-data";
 
     /**
      * Set of possible emulators (or components/services).
@@ -118,9 +118,12 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 "pubsub",
                 "pubsub");
 
+        /**
+         * The default port on which the emulator is running.
+         */
         public final int internalPort;
-        public final String configProperty;
-        public final String emulatorName;
+        final String configProperty;
+        final String emulatorName;
 
         Emulator(int internalPort, String configProperty, String onlyArgument) {
             this.internalPort = internalPort;
@@ -139,7 +142,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
         public static final ExposedPort RANDOM_PORT = new ExposedPort(null);
 
-        public boolean isFixed() {
+        boolean isFixed() {
             return fixedPort != null;
         }
     }
@@ -220,6 +223,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     /**
      * Functions configuration
      * @param functionsPath The location for the functions sources
+     * @param ignores The files to ignore when creating the function
      */
     public record FunctionsConfig(
             Optional<Path> functionsPath,
@@ -273,7 +277,13 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     }
 
     // Use node:20 for now because of https://github.com/firebase/firebase-tools/issues/7173
+    /**
+     * The default image to use for building the docker image.
+     */
     public static final String DEFAULT_IMAGE_NAME = "node:20-alpine";
+    /**
+     * The default version of the firebase tools to install.
+     */
     public static final String DEFAULT_FIREBASE_VERSION = "latest";
 
     /**
@@ -291,7 +301,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         private Path customFirebaseJson;
         private FirebaseConfig firebaseConfig;
 
-        protected Builder() {
+        private Builder() {
         }
 
         /**
@@ -573,6 +583,12 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             private FirestoreConfig firestoreConfig = FirestoreConfig.DEFAULT;
             private FunctionsConfig functionsConfig = FunctionsConfig.DEFAULT;
             private final Map<Emulator, ExposedPort> services = new HashMap<>();
+
+            /**
+             * Create a new builder
+             */
+            public FirebaseConfigBuilder() {
+            }
 
             /**
              * Configure the directory where to find the hosting files
@@ -1136,6 +1152,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         waitingFor(Wait.forLogMessage(".*Emulator Hub running at.*", 1));
     }
 
+    /**
+     * Get the various endpoints for the emulators. The map values are in the form of a string "host:port".
+     * @return The emulator endpoints
+     */
     public Map<Emulator, String> emulatorEndpoints() {
         return services.keySet()
                 .stream()
@@ -1144,6 +1164,11 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                         this::getEmulatorEndpoint));
     }
 
+    /**
+     * Return the TCP port an emulator is listening on.
+     * @param emulator The emulator
+     * @return The TC Port
+     */
     public Integer emulatorPort(Emulator emulator) {
         var exposedPort = services.get(emulator);
         if (exposedPort.isFixed()) {
@@ -1153,6 +1178,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
     }
 
+    /**
+     * Get the ports on which the emulators are running.
+     * @return A map {@link Emulator} -> {@link Integer} indicating the TCP port the emulator is running on.
+     */
     public Map<Emulator, Integer> emulatorPorts() {
         return services.keySet()
                 .stream()
