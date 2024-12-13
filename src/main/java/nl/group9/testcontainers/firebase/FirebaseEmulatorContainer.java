@@ -797,7 +797,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     .orElse(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH);
 
             // Mount volume for static hosting content
-            this.withFileSystemBind(hostingPath, hostingPath(emulatorConfig), BindMode.READ_ONLY);
+            this.withFileSystemBind(hostingPath, containerHostingPath(emulatorConfig), BindMode.READ_ONLY);
         }
 
         if (this.services.containsKey(Emulator.CLOUD_FUNCTIONS)) {
@@ -809,11 +809,11 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     .orElse(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH);
 
             // Mount volume for functions
-            this.withFileSystemBind(functionsPath, functionsPath(emulatorConfig), BindMode.READ_ONLY);
+            this.withFileSystemBind(functionsPath, containerFunctionsPath(emulatorConfig), BindMode.READ_ONLY);
         }
     }
 
-    static String hostingPath(EmulatorConfig emulatorConfig) {
+    static String containerHostingPath(EmulatorConfig emulatorConfig) {
         var hostingPath = emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir();
 
         return hostingPath
@@ -824,16 +824,16 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     } else {
                         return FIREBASE_ROOT + "/" + hostingPath.get();
                     }
-                }).orElseThrow();
+                }).orElse(FirebaseJsonBuilder.FIREBASE_HOSTING_SUBPATH);
     }
 
-    static String functionsPath(EmulatorConfig emulatorConfig) {
+    static String containerFunctionsPath(EmulatorConfig emulatorConfig) {
         return emulatorConfig
                 .firebaseConfig()
                 .functionsConfig()
                 .functionsPath()
                 .map(path -> FIREBASE_ROOT + "/" + path)
-                .orElseThrow();
+                .orElse(FirebaseJsonBuilder.FIREBASE_FUNCTIONS_SUBPATH);
     }
 
     private static class FirebaseDockerBuilder {
@@ -1044,15 +1044,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         private void setupHosting() {
             // Specify public directory if hosting is enabled
             if (emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().isPresent()) {
-                this.dockerBuilder.run("mkdir -p " + hostingPath(emulatorConfig));
-                this.dockerBuilder.volume(hostingPath(emulatorConfig));
+                this.dockerBuilder.run("mkdir -p " + containerHostingPath(emulatorConfig));
+                this.dockerBuilder.volume(containerHostingPath(emulatorConfig));
             }
         }
 
         private void setupFunctions() {
             if (emulatorConfig.firebaseConfig().functionsConfig().functionsPath.isPresent()) {
-                this.dockerBuilder.run("mkdir -p " + functionsPath(emulatorConfig));
-                this.dockerBuilder.volume(functionsPath(emulatorConfig));
+                this.dockerBuilder.run("mkdir -p " + containerFunctionsPath(emulatorConfig));
+                this.dockerBuilder.volume(containerFunctionsPath(emulatorConfig));
             }
         }
 
