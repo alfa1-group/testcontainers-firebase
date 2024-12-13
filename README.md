@@ -187,13 +187,14 @@ Specify a directory to import/export emulator data:
     {
       "emulators" : {
         "firestore": {
-          "port": 8081,
-          "websocketPort" : 9312,
+          "port": 8080,
+          "websocketPort" : 9150,
           "host": "0.0.0.0"
         }
       }
     }
     ```
+  * For both entries, you can of course use your own custom ports, where needed.
 
 - **Java Tool Options**:
     ```java
