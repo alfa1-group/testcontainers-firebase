@@ -36,6 +36,7 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Map;
@@ -59,7 +60,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
 
             // Create a static HTML file in the hosting directory
             File indexFile = new File(tempHostingContentDir, "index.html");
-            try (FileWriter writer = new FileWriter(indexFile)) {
+            try (FileWriter writer = new FileWriter(indexFile, Charset.defaultCharset())) {
                 writer.write("<html><body><h1>Hello, Firebase Hosting!</h1></body></html>");
             }
 
@@ -162,7 +163,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
 
         assertEquals(200, responseCode, "Expected HTTP status 200 for index.html");
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), Charset.defaultCharset()))) {
             String line = reader.readLine();
             assertTrue(line.contains("Hello, Firebase Hosting!"), "Expected content in index.html");
         }
@@ -201,17 +202,14 @@ public class FirebaseEmulatorContainerIntegrationTest {
                 .setEmulatorHost(firebaseContainer.getHost() + ":" + firestorePort)
                 .setCredentials(new EmulatorCredentials())
                 .build();
-        Firestore firestore = options.getService();
 
-        try {
+        try (Firestore firestore = options.getService()) {
             DocumentReference docRef = firestore.collection("testCollection").document("testDoc");
             ApiFuture<WriteResult> result = docRef.set(Map.of("field", "value"));
 
             assertNotNull(result.get());
             DocumentSnapshot snapshot = docRef.get().get();
             assertEquals("value", snapshot.getString("field"));
-        } finally {
-            firestore.close();
         }
     }
 
@@ -302,11 +300,11 @@ public class FirebaseEmulatorContainerIntegrationTest {
         bucket.create("hello.txt", "{\"success\": true}".getBytes(StandardCharsets.UTF_8));
 
         BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, "test-upload").build();
-        storage.create(blobInfo, "test".getBytes());
+        storage.create(blobInfo, "test".getBytes(StandardCharsets.UTF_8));
 
         // Verify the content of the uploaded file
         Blob blob = bucket.get("hello.txt");
-        assertEquals("{\"success\": true}", new String(blob.getContent()), "Expected blob content to match");
+        assertEquals("{\"success\": true}", new String(blob.getContent(), Charset.defaultCharset()), "Expected blob content to match");
     }
 
     @Test

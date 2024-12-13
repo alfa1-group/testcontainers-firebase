@@ -68,6 +68,7 @@ public class TestableFirebaseEmulatorContainer extends FirebaseEmulatorContainer
          * Create the container
          * @return The container.
          */
+        @Override
         public TestableFirebaseEmulatorContainer build() {
             return new TestableFirebaseEmulatorContainer(buildConfig(), name, options);
         }

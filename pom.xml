@@ -144,6 +144,9 @@
                             <goal>jar</goal>
                         </goals>
                         <phase>package</phase>
+                        <configuration>
+                            <excludePackageNames>nl.group9.testcontainers.firebase.json</excludePackageNames>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

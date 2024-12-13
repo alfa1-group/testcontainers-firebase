@@ -648,14 +648,14 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             this.withFileSystemBind(path.toString(), EMULATOR_DATA_PATH, BindMode.READ_WRITE);
         });
 
-        emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().ifPresent(hostingPath -> {
+        emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().ifPresent(hostingPath ->
             // Mount volume for static hosting content
-            this.withFileSystemBind(hostingPath.toString(), hostingPath(emulatorConfig), BindMode.READ_ONLY);
-        });
+            this.withFileSystemBind(hostingPath.toString(), hostingPath(emulatorConfig), BindMode.READ_ONLY)
+        );
 
-        emulatorConfig.firebaseConfig().functionsConfig().functionsPath().ifPresent(functionsPath -> {
-            this.withFileSystemBind(functionsPath.toString(), functionsPath(emulatorConfig), BindMode.READ_ONLY);
-        });
+        emulatorConfig.firebaseConfig().functionsConfig().functionsPath().ifPresent(functionsPath ->
+            this.withFileSystemBind(functionsPath.toString(), functionsPath(emulatorConfig), BindMode.READ_ONLY)
+        );
 
         this.services = emulatorConfig.firebaseConfig().services;
     }
