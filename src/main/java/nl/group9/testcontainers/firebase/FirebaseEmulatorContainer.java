@@ -206,17 +206,34 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     }
 
     /**
+     * Functions configuration
+     * @param functionsPath The location for the functions sources
+     */
+    public record FunctionsConfig(
+            Optional<Path> functionsPath,
+            String[] ignores
+    ) {
+
+        public static FunctionsConfig DEFAULT = new FunctionsConfig(
+                Optional.empty(),
+                new String[0]
+        );
+    }
+
+    /**
      * The firebase configuration, this record mimics the various items which can be configured using the
      * firebase.json file.
      * @param hostingConfig The firebase hosting configuration
      * @param storageConfig The storage configuration
      * @param firestoreConfig The firestore configuration
+     * @param functionsConfig The functions configuration
      * @param services The exposed services configuration
      */
     public record FirebaseConfig(
             HostingConfig hostingConfig,
             StorageConfig storageConfig,
             FirestoreConfig firestoreConfig,
+            FunctionsConfig functionsConfig,
             Map<Emulator, ExposedPort> services) {
     }
 
@@ -444,6 +461,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             private HostingConfig hostingConfig = HostingConfig.DEFAULT;
             private StorageConfig storageConfig = StorageConfig.DEFAULT;
             private FirestoreConfig firestoreConfig = FirestoreConfig.DEFAULT;
+            private FunctionsConfig functionsConfig = FunctionsConfig.DEFAULT;
             private final Map<Emulator, ExposedPort> services = new HashMap<>();
 
             /**
@@ -492,6 +510,32 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 this.firestoreConfig = new FirestoreConfig(
                         this.firestoreConfig.rulesFile(),
                         Optional.of(indexes)
+                );
+                return this;
+            }
+
+            /**
+             * Configure the input directory for the functions
+             * @param functions The path to the functions
+             * @return The builder
+             */
+            public FirebaseConfigBuilder withFunctionsFromPath(Path functions) {
+                this.functionsConfig = new FunctionsConfig(
+                        Optional.of(functions),
+                        this.functionsConfig.ignores()
+                );
+                return this;
+            }
+
+            /**
+             * Configure the ignores for the functions directory
+             * @param ignores The ignores
+             * @return The builder
+             */
+            public FirebaseConfigBuilder withFunctionIgnores(String[] ignores) {
+                this.functionsConfig = new FunctionsConfig(
+                        this.functionsConfig.functionsPath,
+                        ignores
                 );
                 return this;
             }
@@ -562,6 +606,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                         hostingConfig,
                         storageConfig,
                         firestoreConfig,
+                        functionsConfig,
                         services
                 );
                 BaseBuilder.this.customFirebaseJson = Optional.empty();
@@ -608,6 +653,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             this.withFileSystemBind(hostingPath.toString(), hostingPath(emulatorConfig), BindMode.READ_ONLY);
         });
 
+        emulatorConfig.firebaseConfig().functionsConfig().functionsPath().ifPresent(functionsPath -> {
+            this.withFileSystemBind(functionsPath.toString(), functionsPath(emulatorConfig), BindMode.READ_ONLY);
+        });
+
         this.services = emulatorConfig.firebaseConfig().services;
     }
 
@@ -623,6 +672,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                         return FIREBASE_ROOT + "/" + hostingPath.get();
                     }
                 }).orElseThrow();
+    }
+
+    static String functionsPath(EmulatorConfig emulatorConfig) {
+        return emulatorConfig
+                .firebaseConfig()
+                .functionsConfig()
+                .functionsPath()
+                .map(path -> FIREBASE_ROOT + "/" + path)
+                .orElseThrow();
     }
 
     private static class FirebaseDockerBuilder {
@@ -662,6 +720,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             this.includeStorageFiles();
             this.setupDataImportExport();
             this.setupHosting();
+            this.setupFunctions();
             this.runExecutable();
 
             return result;
@@ -718,6 +777,19 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 }
             }
 
+            if (emulatorConfig.firebaseConfig.functionsConfig.functionsPath.isPresent()) {
+                var functionsDirIsAbsolute = emulatorConfig
+                        .firebaseConfig
+                        .functionsConfig
+                        .functionsPath
+                        .map(Path::isAbsolute)
+                        .orElse(false);
+
+                if (functionsDirIsAbsolute) {
+                    throw new IllegalStateException("Functions path cannot be absolute");
+                }
+            }
+
             // TODO: Validate if a custom firebase.json is defined, that the hosts are defined as 0.0.0.0
         }
 
@@ -732,7 +804,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                             "npm i -g firebase-tools@" + emulatorConfig.firebaseVersion() + " && " +
                             "deluser nginx && delgroup abuild && delgroup ping && " +
                             "mkdir -p " + FIREBASE_ROOT + " && " +
-                            "mkdir -p " + hostingPath(emulatorConfig) + " && " +
+
                             "mkdir -p " + EMULATOR_DATA_PATH + " && " +
                             "mkdir -p " + EMULATOR_EXPORT_PATH + " && " +
                             "chmod 777 -R /srv/*");
@@ -819,7 +891,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         private void setupHosting() {
             // Specify public directory if hosting is enabled
             if (emulatorConfig.firebaseConfig().hostingConfig().hostingContentDir().isPresent()) {
+                this.dockerBuilder.run("mkdir -p " + hostingPath(emulatorConfig));
                 this.dockerBuilder.volume(hostingPath(emulatorConfig));
+            }
+        }
+
+        private void setupFunctions() {
+            if (emulatorConfig.firebaseConfig().functionsConfig().functionsPath.isPresent()) {
+                this.dockerBuilder.run("mkdir -p " + functionsPath(emulatorConfig));
+                this.dockerBuilder.volume(functionsPath(emulatorConfig));
             }
         }
 

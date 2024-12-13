@@ -41,7 +41,7 @@ class FirebaseJsonBuilder {
         configureEmulator();
         //        private ExtensionsConfig extensions;
         configureFirestore();
-        //        private Object functions;
+        configureFunctions();
         configureHosting();
         //        private Remoteconfig remoteconfig;
         configureStorage();
@@ -164,12 +164,36 @@ class FirebaseJsonBuilder {
         }
     }
 
+    private void configureFunctions() {
+        if (isEmulatorEnabled(FirebaseEmulatorContainer.Emulator.CLOUD_FUNCTIONS)) {
+            var functions = new HashMap<String, Object>();
+            root.setFunctions(functions);
+
+            var functionsPath = emulatorConfig
+                    .firebaseConfig()
+                    .functionsConfig()
+                    .functionsPath()
+                    .map(Path::toString)
+                    .orElseThrow();
+
+            functions.put("source", functionsPath);
+            functions.put("ignores", new String[] {"node_modules"});
+        }
+    }
+
     private void configureHosting() {
         if (isEmulatorEnabled(FirebaseEmulatorContainer.Emulator.FIREBASE_HOSTING)) {
             var hosting = new HashMap<String, String>();
             root.setHosting(hosting);
 
-            hosting.put("public", FIREBASE_HOSTING_SUBPATH);
+            var hostingPath = emulatorConfig
+                    .firebaseConfig()
+                    .hostingConfig()
+                    .hostingContentDir()
+                    .map(path -> path.isAbsolute() ? FIREBASE_HOSTING_SUBPATH : path.toString())
+                    .orElseThrow();
+
+            hosting.put("public", hostingPath);
         }
     }
 

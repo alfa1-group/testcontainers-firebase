@@ -34,6 +34,7 @@ class CustomFirebaseConfigReader {
                 readHosting(root.getHosting()),
                 readStorage(root.getStorage()),
                 readFirestore(root.getFirestore()),
+                readFunctions(root.getFunctions()),
                 readEmulators(root.getEmulators()));
     }
 
@@ -133,9 +134,7 @@ class CustomFirebaseConfigReader {
                     rulesFile,
                     indexesFile);
         } else {
-            return new FirebaseEmulatorContainer.FirestoreConfig(
-                    Optional.empty(),
-                    Optional.empty());
+            return FirebaseEmulatorContainer.FirestoreConfig.DEFAULT;
         }
     }
 
@@ -151,8 +150,7 @@ class CustomFirebaseConfigReader {
             return new FirebaseEmulatorContainer.HostingConfig(
                     publicDir);
         } else {
-            return new FirebaseEmulatorContainer.HostingConfig(
-                    Optional.empty());
+            return FirebaseEmulatorContainer.HostingConfig.DEFAULT;
         }
     }
 
@@ -168,8 +166,31 @@ class CustomFirebaseConfigReader {
             return new FirebaseEmulatorContainer.StorageConfig(
                     rulesFile);
         } else {
-            return new FirebaseEmulatorContainer.StorageConfig(
-                    Optional.empty());
+            return FirebaseEmulatorContainer.StorageConfig.DEFAULT;
+        }
+    }
+
+    private FirebaseEmulatorContainer.FunctionsConfig readFunctions(Object functions) {
+        if (functions instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> functionsMap = (Map<String, Object>) functions;
+
+            var functionsPath = Optional
+                    .ofNullable(functionsMap.get("source"))
+                    .map(String.class::cast)
+                    .map(this::resolvePath);
+
+            var ignores = Optional
+                    .ofNullable(functionsMap.get("ignores"))
+                    .map(String[].class::cast)
+                    .orElse(new String[0]);
+
+            return new FirebaseEmulatorContainer.FunctionsConfig(
+                    functionsPath,
+                    ignores
+            );
+        } else {
+            return FirebaseEmulatorContainer.FunctionsConfig.DEFAULT;
         }
     }
 

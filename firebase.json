@@ -13,6 +13,10 @@
       "host": "0.0.0.0",
       "port": 7006
     },
+    "functions": {
+      "host": "0.0.0.0",
+      "port": 7007
+    },
     "ui": {
       "host": "0.0.0.0",
       "enabled": true,
@@ -22,6 +26,9 @@
   },
   "hosting": {
     "public": "src/test/hosting"
+  },
+  "functions": {
+    "source": "src/test/functions"
   },
   "firestore": {
     "rules": "firestore.rules",

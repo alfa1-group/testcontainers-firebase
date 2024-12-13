@@ -18,9 +18,6 @@ The following emulators have been verified to work:
 * Realtime Database
 * PubSub
 * Cloud Storage
-
-The following emulators need additional work:
-
 * Functions
 
 The following emulators are currently unverified:
@@ -68,7 +65,7 @@ Customize the Docker environment for the emulator container:
 
 ```java
 .withDockerConfig()
-    .withImage("node:23-alpine")  // Base image for the container
+    .withImage("node:20-alpine")  // Base image for the container
     .withUserId(1000)            // User ID inside the container
     .withGroupId(1000)           // Group ID inside the container
     .done()
@@ -109,6 +106,17 @@ Configure Firebase Hosting:
 ```java
 .withFirebaseConfig()
     .withHostingPath(Paths.get("/path/to/hosting/content"))
+    .done()
+```
+
+### Functions Configuration
+
+Configure Firebase Functions
+
+```java
+.withFirebaseConfig()
+    .withFunctionsFromPath(Patahs.get("/path/to/functions"))
+    .withFunctionIgnores(new String[]{"node_modules"})
     .done()
 ```
 

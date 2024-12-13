@@ -74,6 +74,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
             .withEmulatorData(tempEmulatorDataDir.toPath())
             .withFirebaseConfig()
             .withHostingPath(tempHostingContentDir.toPath())
+            .withFunctionsFromPath(new File("src/test/functions").toPath())
             .withEmulatorsOnPorts(
                     FirebaseEmulatorContainer.Emulator.AUTHENTICATION, 6000,
                     FirebaseEmulatorContainer.Emulator.REALTIME_DATABASE, 6001,
@@ -82,7 +83,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
                     FirebaseEmulatorContainer.Emulator.PUB_SUB, 6004,
                     FirebaseEmulatorContainer.Emulator.CLOUD_STORAGE, 6005,
                     FirebaseEmulatorContainer.Emulator.FIREBASE_HOSTING, 6006,
-                    //            Emulator.CLOUD_FUNCTIONS, 6007,
+                    FirebaseEmulatorContainer.Emulator.CLOUD_FUNCTIONS, 6007,
                     //            Emulator.EVENT_ARC, 6008,
                     FirebaseEmulatorContainer.Emulator.EMULATOR_SUITE_UI, 6009,
                     FirebaseEmulatorContainer.Emulator.EMULATOR_HUB, 6010,
@@ -346,24 +347,28 @@ public class FirebaseEmulatorContainerIntegrationTest {
 
     @Test
     public void testHosting() throws IOException, InterruptedException, URISyntaxException {
-        HttpClient httpClient = HttpClient.newHttpClient();
-        var request = HttpRequest.newBuilder()
-                .GET()
-                .uri(new URI("http://localhost:6006/index.html"))
-                .build();
-        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        var body = response.body();
-        assertEquals("<html><body><h1>Hello, Firebase Hosting!</h1></body></html>", body);
+        try (HttpClient httpClient = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(new URI("http://localhost:6006/index.html"))
+                    .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            var body = response.body();
+            assertEquals("<html><body><h1>Hello, Firebase Hosting!</h1></body></html>", body);
+        }
     }
 
-    /*
-     * CLOUD_FUNCTIONS(
-     * 5001,
-     * "quarkus.google.cloud.functions.emulator-host",
-     * "functions"),
-     * EVENT_ARC(
-     * 9299,
-     * "quarkus.google.cloud.eventarc.emulator-host",
-     * "eventarc"),
-     */
+    @Test
+    public void testFunctions() throws IOException, InterruptedException, URISyntaxException {
+        try (HttpClient httpClient = HttpClient.newHttpClient()) {
+            var request = HttpRequest.newBuilder()
+                    .GET()
+                    .uri(new URI("http://localhost:6007/demo-test-project/us-central1/helloworld"))
+                    .build();
+            var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            var body = response.body();
+            assertEquals("Hello world", body);
+        }
+    }
+
 }
