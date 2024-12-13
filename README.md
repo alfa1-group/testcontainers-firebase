@@ -155,6 +155,46 @@ Specify a directory to import/export emulator data:
     ```java
     .readFromFirebaseJson(Paths.get("/path/to/firebase.json"))
     ```
+  
+  When using a custom firebase.json file, please make the following changes to ensure the
+  emulator runs as expected. These changes will ensure the emulator behaves the same as
+  running the emulator from the normal CLI interface:
+
+  * Add `"host" : "0.0.0.0"` to all emulator entries
+  * Add the hub, logging and UI emulators to the emulators configuration
+    ```json
+    {
+    
+      "emulators" : {
+        "ui": {
+          "port": 4000,
+          "enabled": true,
+          "host": ".0.0.0."
+        },  
+        "hub": {
+          "port": 4400,
+          "host": ".0.0.0."
+        },     
+        "logging": {
+          "port": 4500,
+          "host": ".0.0.0."
+        }     
+      }
+    }
+    ```
+  * If you use Firestore, also set the Firestore Websocket port
+    ```json
+    {
+      "emulators" : {
+        "firestore": {
+          "port": 8081,
+          "websocketPort" : 9312,
+          "host": "0.0.0.0"
+        }
+      }
+    }
+    ```
+
 - **Java Tool Options**:
     ```java
     .withJavaToolOptions("-Xms512m -Xmx1024m")
@@ -162,16 +202,19 @@ Specify a directory to import/export emulator data:
 
 ## Emulator Overview
 
-| Emulator                 | Default Port | Description              |
-|--------------------------|--------------|--------------------------|
-| Authentication           | 9099         | Auth emulator            |
-| Emulator Suite UI        | 4000         | Emulator management UI   |
-| Realtime Database        | 9000         | Database emulator        |
-| Firestore                | 8080         | Firestore emulator       |
-| Firestore WebSocket      | 9150         | Firestore WS emulator    |
-| Cloud Storage            | 9199         | Storage emulator         |
-| Firebase Hosting         | 5000         | Hosting emulator         |
-| Pub/Sub                  | 8085         | Pub/Sub emulator         |
+| Emulator                  | Default Port | Description                         |
+|---------------------------|--------------|-------------------------------------|
+| Authentication            | 9099         | Auth emulator                       |
+| Emulator Suite UI         | 4000         | Emulator management UI              |
+| Emulator Suite UI Hub     | 4400         | Emulator management UI Hub endpoint |
+| Emulator Suite UI Logging | 4500         | Emulator management UI Logging      |
+| Realtime Database         | 9000         | Database emulator                   |
+| Firestore                 | 8080         | Firestore emulator                  |
+| Firestore WebSocket       | 9150         | Firestore WS emulator               |
+| Cloud Storage             | 9199         | Storage emulator                    |
+| Firebase Hosting          | 5000         | Hosting emulator                    |
+| Firebase Functions        | 5001         | Functions emulator                  |
+| Pub/Sub                   | 8085         | Pub/Sub emulator                    |
 
 ## Contributing
 
