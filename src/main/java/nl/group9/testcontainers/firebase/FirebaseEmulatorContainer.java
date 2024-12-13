@@ -263,6 +263,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
      * @param customFirebaseJson The path to a custom firebase
      * @param javaToolOptions The options to pass to the java based emulators
      * @param emulatorData The path to the directory where to store the emulator data
+     * @param debug Whether to run with the --debug flag
      * @param firebaseConfig The firebase configuration
      */
     public record EmulatorConfig(
@@ -273,6 +274,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             Optional<Path> customFirebaseJson,
             Optional<String> javaToolOptions,
             Optional<Path> emulatorData,
+            boolean debug,
             FirebaseConfig firebaseConfig) {
     }
 
@@ -297,6 +299,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         private String token = null;
         private String javaToolOptions = null;
         private Path emulatorData = null;
+        private boolean debug = false;
 
         private Path customFirebaseJson;
         private FirebaseConfig firebaseConfig;
@@ -363,6 +366,16 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
 
         /**
+         * Run the firebase tools with a debug flag
+         * @param debug Whether to run with debug or not
+         * @return The builder
+         */
+        public Builder withDebug(boolean debug) {
+            this.debug = debug;
+            return this;
+        }
+
+        /**
          * Read the configuration from the custom firebase.json file.
          * @param customFirebaseJson The path to the custom firebase json
          * @return The builder
@@ -407,6 +420,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     Optional.ofNullable(customFirebaseJson),
                     Optional.ofNullable(javaToolOptions),
                     Optional.ofNullable(emulatorData),
+                    debug,
                     firebaseConfig
             );
         }
@@ -1075,6 +1089,10 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                     .emulatorData()
                     .map(path -> "--import")
                     .ifPresent(arguments::add);
+
+            if (emulatorConfig.debug) {
+                arguments.add("--debug");
+            }
 
             /*
              * We write the data to a subdirectory of the mount point. The firebase emulator tries to remove and
