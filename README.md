@@ -105,6 +105,8 @@ Enable and configure specific emulators:
     .done()
 ```
 
+Note: do mind that the default port for Firestore conflicts with the default ports for many webapplication frameworks (8080).
+
 ### Hosting Configuration
 
 Configure Firebase Hosting:
