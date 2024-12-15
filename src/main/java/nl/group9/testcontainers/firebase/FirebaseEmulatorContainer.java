@@ -179,6 +179,70 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
     }
 
     /**
+     * Record to hold the argument for the CLI executable.
+     *
+     * @param projectId The project ID, needed when running with the auth emulator
+     * @param token The Google Cloud CLI token to use for authentication. Needed for firebase hosting
+     * @param javaToolOptions The options to pass to the java based emulators
+     * @param emulatorData The path to the directory where to store the emulator data
+     * @param importExport Specify whether to import, export or do both with the emulator data
+     * @param debug Whether to run with the --debug flag
+     */
+    public record CliArgumentsConfig(
+            Optional<String> projectId,
+            Optional<String> token,
+            Optional<String> javaToolOptions,
+            Optional<Path> emulatorData,
+            ImportExport importExport,
+            boolean debug
+    ) {
+        public static final CliArgumentsConfig DEFAULT = new CliArgumentsConfig(
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                ImportExport.IMPORT_EXPORT,
+                false
+        );
+    }
+
+    /**
+     * Behaviour of the import/export data.
+     */
+    public enum ImportExport {
+        /**
+         * Only import the data
+         */
+        IMPORT_ONLY(true, false),
+
+        /**
+         * Only export the data
+         */
+        EXPORT_ONLY(false, true),
+
+        /**
+         * Both import and export the data.
+         */
+        IMPORT_EXPORT(true, true);
+
+        private final boolean doImport;
+        private final boolean doExport;
+
+        ImportExport(boolean doImport, boolean doExport) {
+            this.doImport = doImport;
+            this.doExport = doExport;
+        }
+
+        boolean isDoImport() {
+            return doImport;
+        }
+
+        boolean isDoExport() {
+            return doExport;
+        }
+    }
+
+    /**
      * Firebase hosting configuration
      *
      * @param hostingContentDir The path to the directory containing the hosting content
@@ -258,23 +322,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
      *
      * @param dockerConfig The docker configuration
      * @param firebaseVersion The firebase version to use
-     * @param projectId The project ID, needed when running with the auth emulator
-     * @param token The Google Cloud CLI token to use for authentication. Needed for firebase hosting
+     * @param cliArguments The arguments to the CLI
      * @param customFirebaseJson The path to a custom firebase
-     * @param javaToolOptions The options to pass to the java based emulators
-     * @param emulatorData The path to the directory where to store the emulator data
-     * @param debug Whether to run with the --debug flag
      * @param firebaseConfig The firebase configuration
      */
     public record EmulatorConfig(
             DockerConfig dockerConfig,
             String firebaseVersion,
-            Optional<String> projectId,
-            Optional<String> token,
+            CliArgumentsConfig cliArguments,
             Optional<Path> customFirebaseJson,
-            Optional<String> javaToolOptions,
-            Optional<Path> emulatorData,
-            boolean debug,
             FirebaseConfig firebaseConfig) {
     }
 
@@ -295,11 +351,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
         private DockerConfig dockerConfig = DockerConfig.DEFAULT;
         private String firebaseVersion = DEFAULT_FIREBASE_VERSION;
-        private String projectId = null;
-        private String token = null;
-        private String javaToolOptions = null;
-        private Path emulatorData = null;
-        private boolean debug = false;
+        private CliArgumentsConfig cliArguments = CliArgumentsConfig.DEFAULT;
 
         private Path customFirebaseJson;
         private FirebaseConfig firebaseConfig;
@@ -326,53 +378,11 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
 
         /**
-         * Configure the project id
-         * @param projectId The project id
-         * @return The builder
+         * Configure the CLI argument options
+         * @return The CLI Builder
          */
-        public Builder withProjectId(String projectId) {
-            this.projectId = projectId;
-            return this;
-        }
-
-        /**
-         * Configure the Google auth token to use
-         * @param token The token
-         * @return The builder
-         */
-        public Builder withToken(String token) {
-            this.token = token;
-            return this;
-        }
-
-        /**
-         * Configure the java tool options
-         * @param javaToolOptions The java tool options
-         * @return The builder
-         */
-        public Builder withJavaToolOptions(String javaToolOptions) {
-            this.javaToolOptions = javaToolOptions;
-            return this;
-        }
-
-        /**
-         * Configure the location to import/export the emulator data
-         * @param emulatorData The emulator data
-         * @return The builder
-         */
-        public Builder withEmulatorData(Path emulatorData) {
-            this.emulatorData = emulatorData;
-            return this;
-        }
-
-        /**
-         * Run the firebase tools with a debug flag
-         * @param debug Whether to run with debug or not
-         * @return The builder
-         */
-        public Builder withDebug(boolean debug) {
-            this.debug = debug;
-            return this;
+        public CliBuilder withCliArguments() {
+            return new CliBuilder();
         }
 
         /**
@@ -415,12 +425,8 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
             return new EmulatorConfig(
                     dockerConfig,
                     firebaseVersion,
-                    Optional.ofNullable(projectId),
-                    Optional.ofNullable(token),
+                    cliArguments,
                     Optional.ofNullable(customFirebaseJson),
-                    Optional.ofNullable(javaToolOptions),
-                    Optional.ofNullable(emulatorData),
-                    debug,
                     firebaseConfig
             );
         }
@@ -584,6 +590,107 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
                 } catch (NumberFormatException e) {
                     return Optional.empty();
                 }
+            }
+        }
+
+        /**
+         * Builder for the CLI Arguments configuration
+         */
+        public class CliBuilder {
+            private String projectId;
+            private String token;
+            private String javaToolOptions;
+            private Path emulatorData;
+            private ImportExport importExport;
+            private boolean debug;
+
+            /**
+             * The CLI Builder constructor
+             */
+            private CliBuilder() {
+                this.projectId = Builder.this.cliArguments.projectId.orElse(null);
+                this.token = Builder.this.cliArguments.token.orElse(null);
+                this.javaToolOptions = Builder.this.cliArguments.javaToolOptions.orElse(null);
+                this.emulatorData = Builder.this.cliArguments.emulatorData.orElse(null);
+                this.importExport = Builder.this.cliArguments.importExport;
+                this.debug = Builder.this.cliArguments.debug;
+            }
+
+            /**
+             * Configure the project id
+             * @param projectId The project id
+             * @return The builder
+             */
+            public CliBuilder withProjectId(String projectId) {
+                this.projectId = projectId;
+                return this;
+            }
+
+            /**
+             * Configure the Google auth token to use
+             * @param token The token
+             * @return The builder
+             */
+            public CliBuilder withToken(String token) {
+                this.token = token;
+                return this;
+            }
+
+            /**
+             * Configure the java tool options
+             * @param javaToolOptions The java tool options
+             * @return The builder
+             */
+            public CliBuilder withJavaToolOptions(String javaToolOptions) {
+                this.javaToolOptions = javaToolOptions;
+                return this;
+            }
+
+            /**
+             * Configure the location to import/export the emulator data
+             * @param emulatorData The emulator data
+             * @return The builder
+             */
+            public CliBuilder withEmulatorData(Path emulatorData) {
+                this.emulatorData = emulatorData;
+                return this;
+            }
+
+            /**
+             * Set the import/export behaviour for the specified emulator data. This setting is inactive unless
+             * {@link #withEmulatorData(Path)} is set.
+             * @param importExport The import/export setting
+             * @return The builder
+             */
+            public CliBuilder withImportExport(ImportExport importExport) {
+                this.importExport = importExport;
+                return this;
+            }
+
+            /**
+             * Run the firebase tools with a debug flag
+             * @param debug Whether to run with debug or not
+             * @return The builder
+             */
+            public CliBuilder withDebug(boolean debug) {
+                this.debug = debug;
+                return this;
+            }
+
+            /**
+             * Finish the builder
+             * @return The parent builder
+             */
+            public Builder done() {
+                Builder.this.cliArguments = new CliArgumentsConfig(
+                        Optional.ofNullable(this.projectId),
+                        Optional.ofNullable(this.token),
+                        Optional.ofNullable(this.javaToolOptions),
+                        Optional.ofNullable(this.emulatorData),
+                        this.importExport,
+                        this.debug
+                );
+                return Builder.this;
             }
         }
 
@@ -782,7 +889,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         this.followStdErr = emulatorConfig.dockerConfig().followStdErr();
         this.afterStart = emulatorConfig.dockerConfig().afterStart();
 
-        emulatorConfig.emulatorData().ifPresent(path -> {
+        emulatorConfig.cliArguments().emulatorData().ifPresent(path -> {
             // https://firebase.google.com/docs/emulator-suite/install_and_configure#export_and_import_emulator_data
             // Mount the volume to the specified path
             this.withFileSystemBind(path.toString(), EMULATOR_DATA_PATH, BindMode.READ_WRITE);
@@ -880,7 +987,7 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
 
         private void validateConfiguration() {
-            if (isEmulatorEnabled(Emulator.AUTHENTICATION) && emulatorConfig.projectId().isEmpty()) {
+            if (isEmulatorEnabled(Emulator.AUTHENTICATION) && emulatorConfig.cliArguments().projectId().isEmpty()) {
                 throw new IllegalStateException("Can't create Firebase Auth emulator. Google Project id is required");
             }
 
@@ -983,11 +1090,15 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
 
         private void authenticateToFirebase() {
-            emulatorConfig.token().ifPresent(token -> dockerBuilder.env("FIREBASE_TOKEN", token));
+            emulatorConfig.cliArguments().token().ifPresent(
+                    token -> dockerBuilder.env("FIREBASE_TOKEN", token)
+            );
         }
 
         private void setupJavaToolOptions() {
-            emulatorConfig.javaToolOptions().ifPresent(toolOptions -> dockerBuilder.env("JAVA_TOOL_OPTIONS", toolOptions));
+            emulatorConfig.cliArguments().javaToolOptions().ifPresent(
+                    toolOptions -> dockerBuilder.env("JAVA_TOOL_OPTIONS", toolOptions)
+            );
         }
 
         private void addFirebaseJson() {
@@ -1038,7 +1149,9 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
         }
 
         private void setupDataImportExport() {
-            emulatorConfig.emulatorData().ifPresent(emulator -> this.dockerBuilder.volume(EMULATOR_DATA_PATH));
+            emulatorConfig.cliArguments().emulatorData().ifPresent(
+                    emulator -> this.dockerBuilder.volume(EMULATOR_DATA_PATH)
+            );
         }
 
         private void setupHosting() {
@@ -1093,35 +1206,52 @@ public class FirebaseEmulatorContainer extends GenericContainer<FirebaseEmulator
 
             arguments.add("emulators:start");
 
-            emulatorConfig.projectId()
+            emulatorConfig.cliArguments().projectId()
                     .map(id -> "--project")
                     .ifPresent(arguments::add);
 
-            emulatorConfig.projectId()
+            emulatorConfig.cliArguments().projectId()
                     .ifPresent(arguments::add);
 
-            emulatorConfig
-                    .emulatorData()
-                    .map(path -> "--import")
-                    .ifPresent(arguments::add);
-
-            if (emulatorConfig.debug) {
+            if (emulatorConfig.cliArguments().debug) {
                 arguments.add("--debug");
             }
 
-            /*
-             * We write the data to a subdirectory of the mount point. The firebase emulator tries to remove and
-             * recreate the mount-point directory, which will obviously fail. By using a subdirectory, export succeeds.
-             */
-            emulatorConfig
-                    .emulatorData()
-                    .map(path -> EMULATOR_EXPORT_PATH)
-                    .ifPresent(arguments::add);
+            if (emulatorConfig.cliArguments().importExport.isDoExport()) {
+                emulatorConfig
+                        .cliArguments()
+                        .emulatorData()
+                        .map(path -> "--import")
+                        .ifPresent(arguments::add);
 
-            emulatorConfig
-                    .emulatorData()
-                    .map(path -> "--export-on-exit")
-                    .ifPresent(arguments::add);
+                /*
+                 * We write the data to a subdirectory of the mount point. The firebase emulator tries to remove and
+                 * recreate the mount-point directory, which will obviously fail. By using a subdirectory, export succeeds.
+                 */
+                emulatorConfig
+                        .cliArguments()
+                        .emulatorData()
+                        .map(path -> EMULATOR_EXPORT_PATH)
+                        .ifPresent(arguments::add);
+            }
+
+            if (emulatorConfig.cliArguments().importExport.isDoExport()) {
+                emulatorConfig
+                        .cliArguments()
+                        .emulatorData()
+                        .map(path -> "--export-on-exit")
+                        .ifPresent(arguments::add);
+
+                /*
+                 * We write the data to a subdirectory of the mount point. The firebase emulator tries to remove and
+                 * recreate the mount-point directory, which will obviously fail. By using a subdirectory, export succeeds.
+                 */
+                emulatorConfig
+                        .cliArguments()
+                        .emulatorData()
+                        .map(path -> EMULATOR_EXPORT_PATH)
+                        .ifPresent(arguments::add);
+            }
 
             dockerBuilder.entryPoint(new String[] { "/usr/local/bin/firebase" });
             dockerBuilder.cmd(arguments.toArray(new String[0]));

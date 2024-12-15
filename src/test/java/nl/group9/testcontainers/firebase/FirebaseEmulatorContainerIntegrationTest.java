@@ -75,7 +75,9 @@ public class FirebaseEmulatorContainerIntegrationTest {
     );
 
     private static final FirebaseEmulatorContainer firebaseContainer = testContainer.testBuilder()
+            .withCliArguments()
             .withEmulatorData(tempEmulatorDataDir.toPath())
+            .done()
             .withFirebaseConfig()
             .withHostingPath(tempHostingContentDir.toPath())
             .withFunctionsFromPath(new File("src/test/functions").toPath())

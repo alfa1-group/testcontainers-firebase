@@ -47,12 +47,14 @@ public class TestableFirebaseEmulatorContainer {
          * can be read from the build.
          */
         builder.withDockerConfig()
-            .withUserIdFromEnv("CURRENT_USER")
-            .withGroupIdFromEnv("CURRENT_GROUP")
-            .afterStart(this::afterStart)
+                .withUserIdFromEnv("CURRENT_USER")
+                .withGroupIdFromEnv("CURRENT_GROUP")
+                .afterStart(this::afterStart)
+            .done()
+            .withFirebaseVersion("latest")
+            .withCliArguments()
+                .withProjectId("demo-test-project")
             .done();
-        builder.withFirebaseVersion("latest");
-        builder.withProjectId("demo-test-project");
 
         return builder;
     }

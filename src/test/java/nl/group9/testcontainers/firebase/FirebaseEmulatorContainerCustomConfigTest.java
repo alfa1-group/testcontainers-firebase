@@ -27,7 +27,9 @@ public class FirebaseEmulatorContainerCustomConfigTest {
             tempEmulatorDataDir = Files.createTempDirectory("firebase-emulator-data").toFile();
             var testContainer = new TestableFirebaseEmulatorContainer("FirebaseEmulatorContainerCustomConfigTest");
             firebaseContainer = testContainer.testBuilder()
+                    .withCliArguments()
                     .withEmulatorData(tempEmulatorDataDir.toPath())
+                    .done()
                     .readFromFirebaseJson(new File("firebase.json").toPath())
                     .build();
 
