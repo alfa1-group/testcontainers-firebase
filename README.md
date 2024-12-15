@@ -84,14 +84,35 @@ Configure Firebase-specific settings:
 - **Project ID**: Required for the Authentication emulator.
 - **Firebase Version**: Specify the version of `firebase-tools`.
 - **Token**: Google Cloud CLI token for authentication.
+- **Debug**: Enable debug logging of firebase
 
 ```java
 .withFirebaseVersion("latest")
-.withProjectId("test-project-id")
-.withToken("your-firebase-token")
+.withCliArguments()
+    .withProjectId("test-project-id")
+    .withToken("your-firebase-token")
+    .withDebug(true)
+    .done()
 ```
 
-### Emulator Configuration
+#### Data Import/Export
+
+Specify a directory to import/export emulator data:
+
+```java
+.withCliArguments()
+.withEmulatorData(Paths.get("/path/to/emulator/data"))
+.withImportExport(ImportExport.IMPORT_ONLY)
+.done()
+```
+
+- **Java Tool Options**:
+```java
+.withJavaToolOptions("-Xms512m -Xmx1024m")
+.done()
+```
+
+#### Emulator Configuration
 
 Enable and configure specific emulators:
 
@@ -149,14 +170,6 @@ Set custom rules and indexes for Firestore:
     .done()
 ```
 
-### Data Import/Export
-
-Specify a directory to import/export emulator data:
-
-```java
-.withEmulatorData(Paths.get("/path/to/emulator/data"))
-```
-
 ### Advanced Options
 
 - **Custom `firebase.json`**:
@@ -203,11 +216,6 @@ Specify a directory to import/export emulator data:
     }
     ```
   * For both entries, you can of course use your own custom ports, where needed.
-
-- **Java Tool Options**:
-    ```java
-    .withJavaToolOptions("-Xms512m -Xmx1024m")
-    ```
 
 ## Emulator Overview
 
