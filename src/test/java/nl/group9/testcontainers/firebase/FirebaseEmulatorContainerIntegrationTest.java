@@ -10,7 +10,6 @@ import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
 import com.google.cloud.storage.*;
-import com.google.cloud.storage.Blob;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
@@ -24,7 +23,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -36,6 +34,8 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -153,28 +153,6 @@ public class FirebaseEmulatorContainerIntegrationTest {
     }
 
     @Test
-    @Disabled
-    public void testFirebaseHostingEmulatorConnection() throws Exception {
-        // Validate that the static HTML file is accessible via HTTP
-        int hostingPort = firebaseContainer.emulatorPort(FirebaseEmulatorContainer.Emulator.FIREBASE_HOSTING);
-
-        // Construct URL for the hosted file
-        URL url = new URI("http://" + firebaseContainer.getHost() + ":" + hostingPort + "/index.html").toURL();
-
-        // Fetch content from the URL
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-        int responseCode = connection.getResponseCode();
-
-        assertEquals(200, responseCode, "Expected HTTP status 200 for index.html");
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), Charset.defaultCharset()))) {
-            String line = reader.readLine();
-            assertTrue(line.contains("Hello, Firebase Hosting!"), "Expected content in index.html");
-        }
-    }
-
-    @Test
     public void testFirebaseAuthenticationEmulatorConnection() throws FirebaseAuthException {
         // Retrieve the host and port for the Authentication emulator
         int authPort = firebaseContainer.emulatorPort(FirebaseEmulatorContainer.Emulator.AUTHENTICATION);
@@ -286,8 +264,7 @@ public class FirebaseEmulatorContainerIntegrationTest {
     }
 
     @Test
-    @Disabled
-    public void testStorageEmulatorConnection() {
+    public void testStorageEmulatorConnection() throws IOException {
         int storagePort = firebaseContainer.emulatorPort(FirebaseEmulatorContainer.Emulator.CLOUD_STORAGE);
 
         Storage storage = StorageOptions.newBuilder()
@@ -296,20 +273,23 @@ public class FirebaseEmulatorContainerIntegrationTest {
                 .setCredentials(NoCredentials.getInstance())
                 .build().getService();
 
-        var bucketName = "quarkus-hello";
+        var bucketName = "demo-test-project.appspot.com";
 
-        Bucket bucket = storage.get(bucketName);
-        if (bucket == null) {
-            bucket = storage.create(BucketInfo.newBuilder(bucketName).build());
+        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, "test-upload")
+                .setContentType("application/json")
+                .setContentDisposition("attachment; filename=\"test-upload\"")
+                .build();
+
+        try (var writer = storage.writer(blobInfo)) {
+            writer.write(ByteBuffer.wrap( "{\"test\": 1}".getBytes(StandardCharsets.UTF_8)));
         }
-        bucket.create("hello.txt", "{\"success\": true}".getBytes(StandardCharsets.UTF_8));
 
-        BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, "test-upload").build();
-        storage.create(blobInfo, "test".getBytes(StandardCharsets.UTF_8));
-
-        // Verify the content of the uploaded file
-        Blob blob = bucket.get("hello.txt");
-        assertEquals("{\"success\": true}", new String(blob.getContent(), Charset.defaultCharset()), "Expected blob content to match");
+        try (var reader = storage.reader(blobInfo.getBlobId())) {
+            try (var bufReader = new BufferedReader(Channels.newReader(reader, StandardCharsets.UTF_8))) {
+                var contents = bufReader.readLine();
+                assertEquals("{\"test\": 1}", contents, "Expected blob content to match");
+            }
+        }
     }
 
     @Test
