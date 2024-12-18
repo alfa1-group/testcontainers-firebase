@@ -27,6 +27,11 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 23
+        cache: 'npm'
+        cache-dependency-path: src/test/resources/package-lock.json
     - uses: bahmutov/npm-install@v1
       with:
         working-directory: src/test/functions
