@@ -18,7 +18,7 @@ jobs:
           distribution: 'temurin'
       - uses: actions/setup-node@v4
         with:
-          node-version: 23
+          node-version: 20
           cache: 'npm'
           cache-dependency-path: src/test/resources/package-lock.json
       - uses: bahmutov/npm-install@v1
