@@ -31,7 +31,7 @@ jobs:
       with:
         node-version: 20
         cache: 'npm'
-        cache-dependency-path: src/test/resources/package-lock.json
+        cache-dependency-path: src/test/functions/package-lock.json
     - uses: bahmutov/npm-install@v1
       with:
         working-directory: src/test/functions
